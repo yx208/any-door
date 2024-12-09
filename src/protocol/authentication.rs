@@ -22,8 +22,15 @@ pub struct Authenticator {
 }
 
 /// 认证数据包
+///
+/// 工作流程
+/// 1. 发送方和接收方预先共享一个密钥
+/// 2. 发送方使用该密钥和原始消息通过 HMAC 算法生成一个认证码
+/// 3. 将原始消息和认证码一起发送给接收方
+/// 4. 接收方用相同的密钥和收到的消息重新计算 HMAC
+/// 5. 比较计算得到的值和收到的认证码是否一致
 struct AuthenticationPacket {
-    /// tls 握手的时候，产生的随机值（challenge）
+    /// tls 在握手过程中用于验证身份的一个随机值
     challenge: [u8; CHALLENGE_SIZE],
     timestamp: u64,
     hmac: [u8; 32],
@@ -59,10 +66,9 @@ impl Authenticator {
     pub async fn authenticate_to_server<S>(&self, stream: &mut S) -> Result<()>
         where S: AsyncRead + AsyncWrite + Unpin
     {
-        // Generate challenge
+        // Generate challenge, provide by system
         let mut challenge = [0u8; CHALLENGE_SIZE];
-        let mut rng = OsRng;
-        rng.fill_bytes(&mut challenge);
+        OsRng.fill_bytes(&mut challenge);
 
         // Create authentication packet
         let packet = self.create_auth_packet(challenge).await?;
@@ -85,6 +91,7 @@ impl Authenticator {
             .map_err(|err| ProxyError::OSError(err.to_string()))?
             .as_secs();
 
+        // 结合哈希函数(SHA-256)和一个密钥来生成消息认证码
         let mut mac = HmacSha256::new_from_slice(self.password.as_bytes())
             .map_err(|err| ProxyError::AuthenticationFailed(err.to_string()))?;
 
@@ -107,6 +114,7 @@ impl Authenticator {
         stream.write_all(&packet.timestamp.to_be_bytes()).await?;
         stream.write_all(&packet.hmac).await?;
         stream.flush().await?;
+
         Ok(())
     }
 
@@ -183,5 +191,25 @@ mod tests {
 
         assert!(client_result.is_ok());
         assert!(server_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_failed_authentication() {
+        let (mut client, mut server) = duplex(64);
+
+        let client_auth = Authenticator::new("wrong_password".to_string());
+        let server_auth = Authenticator::new("correct_password".to_string());
+
+        let client_task = tokio::spawn(async move {
+            client_auth.authenticate_to_server(&mut client).await.unwrap()
+        });
+
+        let server_task = tokio::spawn(async move {
+            server_auth.authenticate_client(&mut server).await.unwrap()
+        });
+
+        let (client_result, server_result) = tokio::join!(client_task, server_task);
+
+        assert!(client_result.is_err() || server_result.is_err());
     }
 }
