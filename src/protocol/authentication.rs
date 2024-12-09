@@ -43,7 +43,7 @@ impl Authenticator {
         }
     }
 
-    /// Server-side authentication handler
+    /// 服务器端认证处理程
     pub async fn authenticate_client<S>(&self, stream: &mut S) -> Result<()>
         where S: AsyncRead + AsyncWrite + Unpin
     {
@@ -62,7 +62,7 @@ impl Authenticator {
         Ok(())
     }
 
-    /// Client-side authentication handler
+    /// 客户端认证处理
     pub async fn authenticate_to_server<S>(&self, stream: &mut S) -> Result<()>
         where S: AsyncRead + AsyncWrite + Unpin
     {

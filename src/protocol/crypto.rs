@@ -83,6 +83,53 @@ impl<S> CryptoStream<S> where S: AsyncRead + AsyncWrite + Unpin {
 
         Ok(BytesMut::from(&plaintext))
     }
+
+    pub fn into_inner(self) -> S {
+        self.inner
+    }
+}
+
+/// 用于密钥派生和管理的辅助函数
+pub mod key_utils {
+    use super::*;
+    use rand::Rng;
+
+    /// Generate a secure random key
+    pub fn generate_key() -> [u8; KEY_SIZE] {
+        let mut key = [0u8; KEY_SIZE];
+        OsRng.fill(&mut key);
+        key
+    }
+
+    /// 使用 PBKDF2 从密码派生密钥
+    pub fn derive_key(password: &str, salt: &[u8]) -> Result<[u8; KEY_SIZE]> {
+        use pbkdf2::{pbkdf2_hmac};
+
+        let mut key = [0u8; KEY_SIZE];
+        pbkdf2_hmac::<Sha256>(password.as_bytes(), salt, 1000, &mut key);
+
+        Ok(key)
+    }
+}
+
+/// 数据报协议的加密数据包
+pub struct EncryptedPacket {
+    nonce: [u8; NONCE_SIZE],
+    payload: Vec<u8>,
+}
+
+impl EncryptedPacket {
+    pub fn new(cipher: &Aes256Gcm, data: &[u8]) -> Result<Self> {
+        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let payload = cipher
+            .encrypt(&nonce, data)
+            .map_err(|err| ProxyError::EncryptionError(err.to_string()))?;
+
+        Ok(Self {
+            nonce: nonce.into(),
+            payload
+        })
+    }
 }
 
 #[cfg(test)]
