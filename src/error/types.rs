@@ -15,9 +15,14 @@ pub enum ProxyError {
     #[error("Timeout error: {0}")]
     Timeout(String),
 
-    /// 调用系统参数产生的错误
     #[error("Operator system error: {0}")]
     OSError(String),
+
+    #[error("SOCKS5 error: {0}")]
+    Socks5Error(String),
+
+    #[error("Encryption error: {0}")]
+    EncryptionError(String),
 }
 
 impl From<tokio::time::error::Elapsed> for ProxyError {
