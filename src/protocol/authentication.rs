@@ -56,7 +56,7 @@ impl Authenticator {
     }
 
     /// Client-side authentication handler
-    pub async fn authenticate_server<S>(&self, stream: &mut S) -> Result<()>
+    pub async fn authenticate_to_server<S>(&self, stream: &mut S) -> Result<()>
         where S: AsyncRead + AsyncWrite + Unpin
     {
         // Generate challenge
@@ -65,7 +65,7 @@ impl Authenticator {
         rng.fill_bytes(&mut challenge);
 
         // Create authentication packet
-        let packet = self.create_auth_packet(challenge)?;
+        let packet = self.create_auth_packet(challenge).await?;
 
         // Send authentication packet
         self.write_auth_packet(stream, &packet).await?;
@@ -159,7 +159,29 @@ impl Authenticator {
 
 #[cfg(test)]
 mod tests {
-    async fn test_successful_authentication() {
+    use super::*;
+    use tokio::io::duplex;
 
+    #[tokio::test]
+    async fn test_successful_authentication() {
+        let password = "test_password".to_string();
+        let (mut client, mut server) = duplex(64);
+
+        let client_auth = Authenticator::new(password.clone());
+        let server_auth = Authenticator::new(password);
+
+        let client_task = tokio::spawn(async move {
+            // 使用 client 往 server 写
+            client_auth.authenticate_to_server(&mut client).await.unwrap()
+        });
+
+        let server_task = tokio::spawn(async move {
+            server_auth.authenticate_client(&mut server).await.unwrap()
+        });
+
+        let (client_result, server_result) = tokio::join!(client_task, server_task);
+
+        assert!(client_result.is_ok());
+        assert!(server_result.is_ok());
     }
 }
