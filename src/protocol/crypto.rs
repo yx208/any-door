@@ -1,13 +1,17 @@
-use aes_gcm::{aead::{Aead, KeyInit, OsRng}, AeadCore, Aes256Gcm, Key, Nonce};
-use sha2::{Sha256, Digest};
+use aes_gcm::{
+    aead::{Aead, KeyInit, OsRng},
+    AeadCore, Aes256Gcm, Key, Nonce
+};
+use aes_gcm::aead::generic_array::sequence::GenericSequence;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncReadExt, AsyncWriteExt};
 use bytes::{BytesMut, BufMut};
+use sha2::{Sha256, Digest};
 use crate::error::{Result, types::ProxyError};
 
-const NONCE_SIZE: usize = 32;
-const TAG_SIZE: usize = 32;
+const NONCE_SIZE: usize = 12;
+const TAG_SIZE: usize = 16;
 const KEY_SIZE: usize = 32;
-const MAX_PAYLOAD_SIZE: usize = 32;
+const MAX_PAYLOAD_SIZE: usize = 16384;
 
 pub struct CryptoStream<S> {
     inner: S,
@@ -78,10 +82,10 @@ impl<S> CryptoStream<S> where S: AsyncRead + AsyncWrite + Unpin {
 
         // Decrypt the data
         let plaintext = self.cipher
-            .decrypt(nonce, &self.buffer)
+            .decrypt(nonce, &self.buffer[..])
             .map_err(|err| ProxyError::EncryptionError(err.to_string()))?;
 
-        Ok(BytesMut::from(&plaintext))
+        Ok(BytesMut::from(&plaintext[..]))
     }
 
     pub fn into_inner(self) -> S {
@@ -120,7 +124,7 @@ pub struct EncryptedPacket {
 
 impl EncryptedPacket {
     pub fn new(cipher: &Aes256Gcm, data: &[u8]) -> Result<Self> {
-        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let nonce = Aes256Gcm::generate_nonce(OsRng);
         let payload = cipher
             .encrypt(&nonce, data)
             .map_err(|err| ProxyError::EncryptionError(err.to_string()))?;
@@ -130,18 +134,60 @@ impl EncryptedPacket {
             payload
         })
     }
+
+    /// 解密包
+    pub fn decrypt(&self, cipher: &Aes256Gcm) -> Result<Vec<u8>> {
+        let nonce = Nonce::from_slice(&self.nonce);
+        cipher
+            .decrypt(nonce, &self.payload[..])
+            .map_err(|err| ProxyError::EncryptionError(err.to_string()))
+    }
+
+    /// 序列化 packet
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(NONCE_SIZE + self.payload.len());
+        bytes.extend_from_slice(&self.nonce);
+        bytes.extend_from_slice(&self.payload);
+        bytes
+    }
+
+    /// 从 bytes 反序列化
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        // 最小应该有一个 nonce 的大小
+        if bytes.len() < NONCE_SIZE {
+            return Err(ProxyError::EncryptionError("Invalid packet size".to_string()))
+        }
+
+        let mut nonce = [0u8; NONCE_SIZE];
+        // 提取 nonce
+        nonce.copy_from_slice(&bytes[..NONCE_SIZE]);
+        // 提取 payload
+        let payload = bytes[NONCE_SIZE..].to_vec();
+
+        Ok(Self { nonce, payload })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aes_gcm::aead::OsRng;
-    use aes_gcm::Aes256Gcm;
 
-    #[test]
-    fn test() {
-        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        println!("{:?}", nonce);
+    #[tokio::test]
+    async fn test_crypto_stream() {
+        let (client, server) = tokio::io::duplex(1024);
+        let password = "test_password";
+
+        let mut client_crypto = CryptoStream::new(client, password).unwrap();
+        let mut server_crypto = CryptoStream::new(server, password).unwrap();
+
+        let test_data = b"Hello, world!";
+
+        tokio::spawn(async move {
+            client_crypto.write_encrypted(test_data).await.unwrap();
+        });
+
+        let received = server_crypto.read_encrypted().await.unwrap();
+        assert_eq!(&received[..], test_data);
     }
 
 }
