@@ -39,7 +39,7 @@ impl TcpTransport {
             .await
             .map_err(|err| ProxyError::ConnectionError(err.to_string()))?;
 
-        // 在此套接字上设置TCP NODELAY选项的值
+        // 在此套接字上设置 TCP-NODELAY 选项的值
         // 此选项禁用 Nagle 算法。这意味着数据段总是尽快发送，即使只有少量的数据
         // 如果不设置，数据将被缓冲，直到有足够的数据量发送出去，从而避免频繁发送小数据包
         stream.set_nodelay(true)
