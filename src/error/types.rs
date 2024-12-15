@@ -23,6 +23,9 @@ pub enum ProxyError {
 
     #[error("Encryption error: {0}")]
     EncryptionError(String),
+
+    #[error("Connection error: {0}")]
+    ConnectionError(String),
 }
 
 impl From<tokio::time::error::Elapsed> for ProxyError {
