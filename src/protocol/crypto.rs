@@ -190,5 +190,31 @@ mod tests {
         assert_eq!(&received[..], test_data);
     }
 
+    #[test]
+    fn test_key_derivation() {
+        let password = "test_password";
+        let salt = b"random_salt";
+        let key = key_utils::derive_key(password, salt).unwrap();
+        assert_eq!(key.len(), KEY_SIZE);
+    }
+
+    #[test]
+    fn test_encrypted_packet() {
+        let password = "test_password";
+        let mut hasher = Sha256::new();
+        hasher.update(password.as_bytes());
+        let hasher_slice = hasher.finalize();
+        let key = Key::<Aes256Gcm>::from_slice(&hasher_slice);
+        let cipher = Aes256Gcm::new(&key);
+
+        let test_data = b"Hello, world!";
+
+        let packet = EncryptedPacket::new(&cipher, test_data).unwrap();
+        let bytes = packet.to_bytes();
+        let decoded_packet = EncryptedPacket::from_bytes(&bytes).unwrap();
+        let decrypted = decoded_packet.decrypt(&cipher).unwrap();
+
+        assert_eq!(&decrypted[..], test_data);
+    }
 }
 
