@@ -6,7 +6,7 @@ use aes_gcm::aead::generic_array::sequence::GenericSequence;
 use tokio::io::{AsyncRead, AsyncWrite, AsyncReadExt, AsyncWriteExt};
 use bytes::{BytesMut, BufMut};
 use sha2::{Sha256, Digest};
-use crate::error::{Result, types::ProxyError};
+use crate::error::{Result, ProxyError};
 
 const NONCE_SIZE: usize = 12;
 const TAG_SIZE: usize = 16;

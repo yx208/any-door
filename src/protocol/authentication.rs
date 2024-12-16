@@ -5,7 +5,7 @@ use rand::rngs::OsRng;
 use sha2::Sha256;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use crate::error::{
-    types::ProxyError,
+    ProxyError,
     Result,
 };
 

@@ -2,7 +2,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
-use crate::error::{Result, types::ProxyError};
+use crate::error::{Result, ProxyError};
+use crate::Target;
 
 pub struct TcpTransport {
     max_connections: usize,
@@ -46,5 +47,9 @@ impl TcpTransport {
             .map_err(|err| ProxyError::ConnectionError(err.to_string()))?;
 
         Ok((stream, addr))
+    }
+
+    pub async fn connect_to_target(&self, target: Target) {
+
     }
 }

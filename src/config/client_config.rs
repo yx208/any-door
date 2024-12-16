@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 use serde::{Deserialize, Serialize};
-use crate::error::types::ProxyError;
+use crate::error::ProxyError;
 use crate::error::Result;
 
 fn default_timeout() -> u64 { 60 }

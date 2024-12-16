@@ -1,3 +1,5 @@
-pub mod types;
+mod types;
 
-pub type Result<T> = anyhow::Result<T, types::ProxyError>;
+pub use types::ProxyError;
+
+pub type Result<T> = anyhow::Result<T, ProxyError>;

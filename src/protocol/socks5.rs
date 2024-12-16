@@ -1,5 +1,5 @@
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use crate::error::{Result, types::ProxyError};
+use crate::error::{Result, ProxyError};
 
 const SOCKS5_VERSION: u8 = 0x5;
 const NO_AUTHENTICATION: u8 = 0x00;

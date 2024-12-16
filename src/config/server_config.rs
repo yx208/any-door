@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::error::types::ProxyError;
+use crate::error::ProxyError;
 use crate::error::Result;
 
 fn default_max_connections() -> usize { 1000 }

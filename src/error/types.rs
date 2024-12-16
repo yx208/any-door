@@ -26,6 +26,9 @@ pub enum ProxyError {
 
     #[error("Connection error: {0}")]
     ConnectionError(String),
+
+    #[error("Invalid command type: {0}")]
+    InvalidCommand(u8),
 }
 
 impl From<tokio::time::error::Elapsed> for ProxyError {
