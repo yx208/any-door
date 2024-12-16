@@ -4,6 +4,7 @@ pub mod error;
 pub mod config;
 pub mod protocol;
 pub mod transport;
+pub mod utils;
 
 use std::net::{Ipv4Addr, Ipv6Addr};
 use aes_gcm::aead::Buffer;
