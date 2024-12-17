@@ -4,15 +4,17 @@ use proxy_rs::{
     config::ServerConfig,
     transport::stream::StreamManager,
     error::{Result, ProxyError},
-    protocol::authentication::Authenticator,
-    protocol::crypto::CryptoStream,
+    protocol::{
+        authentication::Authenticator,
+        crypto::CryptoStream,
+    },
     utils::ConnectionLogger,
 };
 
 async fn handle_connection(
     stream: TcpStream,
     config: Arc<ServerConfig>,
-    stream_manager: StreamManager
+    stream_manager: Arc<StreamManager>
 ) -> Result<()> {
     let peer_addr = stream.peer_addr()?;
     let stream_id = stream_manager.register_stream(peer_addr).await;
@@ -28,6 +30,14 @@ async fn handle_connection(
     if let Err(e) = authenticator.authenticate_client(&mut crypto_stream).await {
         conn_logger.log_auth_attempt(false);
         return Err(e);
+    }
+    conn_logger.log_auth_attempt(true);
+
+    // 读取目标地址
+    let mut target_buf = [0u8; 1024];
+    let n= crypto_stream.read_encrypted().await?.len();
+    if n == 0 {
+        return Err(ProxyError::ConnectionError("Empty target address".into()));
     }
 
     Ok(())

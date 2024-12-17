@@ -1,3 +1,5 @@
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     AeadCore, Aes256Gcm, Key, Nonce
@@ -19,7 +21,10 @@ pub struct CryptoStream<S> {
     buffer: BytesMut,
 }
 
-impl<S> CryptoStream<S> where S: AsyncRead + AsyncWrite + Unpin {
+impl<S> CryptoStream<S>
+where
+    S: AsyncRead + AsyncWrite + Unpin
+{
     /// 根据密码创建一个新的加密流
     pub fn new(steam: S, password: &str) -> Result<Self> {
         let mut hasher = Sha256::new();
@@ -165,6 +170,40 @@ impl EncryptedPacket {
         let payload = bytes[NONCE_SIZE..].to_vec();
 
         Ok(Self { nonce, payload })
+    }
+}
+
+impl<S: AsyncRead + AsyncWrite + Unpin> AsyncRead for CryptoStream<S> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_read(cx, buf)
+    }
+}
+
+impl<S: AsyncRead + AsyncWrite + Unpin> AsyncWrite for CryptoStream<S> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::io::Result<usize>> {
+        Pin::new(&mut self.inner).poll_write(cx, buf)
+    }
+
+    fn poll_flush(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_flush(cx)
+    }
+
+    fn poll_shutdown(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        Pin::new(&mut self.inner).poll_shutdown(cx)
     }
 }
 
