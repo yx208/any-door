@@ -2,18 +2,18 @@ use std::sync::Arc;
 use std::time::Duration;
 use log::Level;
 use tokio::net::TcpStream;
-use proxy_rs::config::ServerConfig;
 use proxy_rs::transport::{
     stream::StreamManager,
     tcp::{TcpTransport, StreamCopier}
 };
-use proxy_rs::error::{Result, ProxyError};
 use proxy_rs::protocol::{
     authentication::Authenticator,
     crypto::CryptoStream,
 };
+use proxy_rs::config::ServerConfig;
 use proxy_rs::utils::{Logger, ConnectionLogger, MetricsLogger};
 use proxy_rs::{Target, Address};
+use proxy_rs::error::{Result, ProxyError};
 
 async fn handle_connection(
     stream: TcpStream,
