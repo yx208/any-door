@@ -29,6 +29,12 @@ pub enum ProxyError {
 
     #[error("Invalid command type: {0}")]
     InvalidCommand(u8),
+
+    #[error("UTF-8 encoding error: {0}")]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error("Address parsing error: {0}")]
+    AddressParseError(String),
 }
 
 impl From<tokio::time::error::Elapsed> for ProxyError {

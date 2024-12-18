@@ -119,6 +119,8 @@ impl Target {
         bytes.extend_from_slice(&self.port.to_be_bytes());
         bytes
     }
+
+    pub fn from_bytes(_bytes: &[u8]) {}
 }
 
 #[cfg(test)]

@@ -1,3 +1,3 @@
 mod logging;
 
-pub use logging::ConnectionLogger;
+pub use logging::{ConnectionLogger, Logger, MetricsLogger};
