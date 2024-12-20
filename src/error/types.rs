@@ -35,6 +35,9 @@ pub enum ProxyError {
 
     #[error("Address parsing error: {0}")]
     AddressParseError(String),
+
+    #[error("Unsupported feature: {0}")]
+    UnsupportedFeature(String),
 }
 
 impl From<tokio::time::error::Elapsed> for ProxyError {
